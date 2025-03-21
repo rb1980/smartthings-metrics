@@ -25,7 +25,6 @@ package recording
 import (
 	"github.com/rb1980/smartthings-metrics/extracting"
 	"github.com/rb1980/smartthings-metrics/readers"
-	"github.com/prometheus/common/log"
 	"github.com/sirupsen/logrus"
 	"time"
 )
