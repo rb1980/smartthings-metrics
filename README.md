@@ -1,5 +1,5 @@
 # SmartThings metrics
-![ci](https://github.com/moikot/smartthings-metrics/workflows/ci/badge.svg)
+![ci](https://github.com/rb1980/smartthings-metrics/workflows/ci/badge.svg)
 
 A micro-service that provides SmartThings metrics to Prometheus.
 
@@ -19,7 +19,7 @@ For this service to have access to SmartThings API, you need to provide it with 
   * [Golang >=1.14](https://golang.org/doc/install)
 
 ```bash
-$ go get github.com/moikot/smartthings-metrics
+$ go get github.com/rb1980/smartthings-metrics
 $ smartthings-metrics -client-id YOUR_CLIENT_ID -client-secret YOUR_CLIENT_SECRET
 $ curl localhost:9153/metrics
 ```
@@ -109,7 +109,7 @@ export SSL_KEY_FILE=/path/to/key.pem
   * [Docker](https://docs.docker.com/get-docker/)
 
 ```bash
-$ docker run -d --rm -p 9153:9153 moikot/smartthings-metrics -client-id YOUR_CLIENT_ID -client-secret YOUR_CLIENT_SECRET
+$ docker run -d --rm -p 9153:9153 rb1980/smartthings-metrics -client-id YOUR_CLIENT_ID -client-secret YOUR_CLIENT_SECRET
 $ curl localhost:9153/metrics
 ```
 
@@ -121,48 +121,13 @@ To enable HTTPS in Docker, mount your SSL certificate files:
 $ docker run -d --rm -p 9153:9153 \
   -v /path/to/cert.pem:/etc/ssl/certs/cert.pem \
   -v /path/to/key.pem:/etc/ssl/private/key.pem \
-  moikot/smartthings-metrics \
+  rb1980/smartthings-metrics \
   -client-id YOUR_CLIENT_ID \
   -client-secret YOUR_CLIENT_SECRET \
   -cert-file /etc/ssl/certs/cert.pem \
   -key-file /etc/ssl/private/key.pem
 $ curl -k https://localhost:9153/metrics
 ```
-
-### Deploy to a Kubernetes cluster
-
-**Prerequisites:**
-  * [Kuberentes](https://kubernetes.io/)
-  * [Helm 3](https://helm.sh)
-
-SmartThing metrics service is installed to Kubernetes via its [Helm chart](https://github.com/moikot/helm-charts/tree/master/charts/smartthings-metrics).
-
-```
-$ helm repo add moikot https://moikot.github.io/helm-charts
-$ helm install smartthings-metrics moikot/smartthings-metrics --create-namespace --namespace smartthings \
-  --set clientId=YOUR_CLIENT_ID \
-  --set clientSecret=YOUR_CLIENT_SECRET
-```
-
-#### HTTPS Support
-
-To enable HTTPS in Kubernetes, create a secret with your SSL certificate and key:
-
-```bash
-$ kubectl create secret tls smartthings-metrics-tls \
-  --cert=/path/to/cert.pem \
-  --key=/path/to/key.pem \
-  -n smartthings
-
-$ helm install smartthings-metrics moikot/smartthings-metrics \
-  --create-namespace \
-  --namespace smartthings \
-  --set clientId=YOUR_CLIENT_ID \
-  --set clientSecret=YOUR_CLIENT_SECRET \
-  --set ssl.enabled=true \
-  --set ssl.certSecret=smartthings-metrics-tls
-```
-
 ## How it works
 
 The service uses [SmartThings API](https://smartthings.developer.samsung.com/docs/api-ref/st-api.html) to obtain the current status of all connected devices periodically. It exposes the metrics received at `localhost:9153/metrics` so that [Prometheus](https://prometheus.io/) could scrape them.

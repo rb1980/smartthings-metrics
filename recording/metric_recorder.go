@@ -24,7 +24,7 @@ package recording
 
 import (
 	"fmt"
-	"github.com/moikot/smartthings-metrics/extracting"
+	"github.com/rb1980/smartthings-metrics/extracting"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/sirupsen/logrus"

@@ -26,7 +26,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/moikot/smartthings-metrics/recording"
+	"github.com/rb1980/smartthings-metrics/recording"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 	"os"
