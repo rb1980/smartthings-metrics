@@ -26,6 +26,7 @@ import (
 	"github.com/rb1980/smartthings-metrics/extracting"
 	"github.com/rb1980/smartthings-metrics/readers"
 	"github.com/sirupsen/logrus"
+	"github.com/prometheus/common"
 	"time"
 )
 
