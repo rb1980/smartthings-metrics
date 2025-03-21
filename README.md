@@ -5,12 +5,13 @@ A micro-service that provides SmartThings metrics to Prometheus.
 
 ## Run
 
-For this service to have access to SmartThings API, you need to provide it with a personal access token (PAT). To generate a PAT, do the following:
+For this service to have access to SmartThings API, you need to provide it with OAuth credentials. To get OAuth credentials, do the following:
 
-1. Open SmartThings [Personal access tokens](https://account.smartthings.com/tokens) page.
-2. Click | GENERATE NEW TOKEN|  button.
-3. Give it a name and enable | Devices/List all devices|  and | Devices/See all devices|  scopes.
-4. Click | GENERATE TOKEN|  button.
+1. Go to the [SmartThings Developer Workspace](https://account.smartthings.com/workspace)
+2. Create a new app or select an existing one
+3. Under "App Credentials", you'll find your Client ID and Client Secret
+4. Make sure your app has the following OAuth scopes:
+   - `devices:read`
 
 ### Run as a standalone app
 
@@ -19,11 +20,88 @@ For this service to have access to SmartThings API, you need to provide it with 
 
 ```bash
 $ go get github.com/moikot/smartthings-metrics
-$ smartthings-metrics -token [Smarthings-API-token]
+$ smartthings-metrics -client-id YOUR_CLIENT_ID -client-secret YOUR_CLIENT_SECRET
 $ curl localhost:9153/metrics
 ```
 
 **Note:** Using `-interval` you can define the refresh interval in seconds. The default value of the refresh interval is 60 seconds.
+
+### Generating Self-Signed Certificates
+
+To generate a self-signed certificate for testing or development purposes, you can use OpenSSL:
+
+```bash
+# Generate a private key
+openssl genrsa -out key.pem 2048
+
+# Generate a self-signed certificate
+openssl req -x509 -new -nodes \
+  -key key.pem \
+  -sha256 -days 365 \
+  -out cert.pem \
+  -subj "/CN=localhost"
+```
+
+**Note:** Self-signed certificates are not recommended for production use. For production environments, use certificates from a trusted Certificate Authority (CA).
+
+### Using Let's Encrypt Certificates
+
+For production environments, you can use free SSL certificates from Let's Encrypt. Here's how to set it up:
+
+1. Install Certbot (Let's Encrypt client):
+```bash
+# On Ubuntu/Debian
+sudo apt-get update
+sudo apt-get install certbot
+
+# On macOS with Homebrew
+brew install certbot
+```
+
+2. Obtain a certificate:
+```bash
+# For a single domain
+sudo certbot certonly --standalone -d your-domain.com
+
+# For multiple domains
+sudo certbot certonly --standalone -d your-domain.com -d www.your-domain.com
+```
+
+3. The certificates will be stored in:
+   - Certificate: `/etc/letsencrypt/live/your-domain.com/fullchain.pem`
+   - Private key: `/etc/letsencrypt/live/your-domain.com/privkey.pem`
+
+4. Use the certificates with the service:
+```bash
+$ smartthings-metrics -client-id YOUR_CLIENT_ID -client-secret YOUR_CLIENT_SECRET \
+  -cert-file /etc/letsencrypt/live/your-domain.com/fullchain.pem \
+  -key-file /etc/letsencrypt/live/your-domain.com/privkey.pem
+```
+
+**Note:** Let's Encrypt certificates expire after 90 days. Set up automatic renewal:
+```bash
+# Test renewal
+sudo certbot renew --dry-run
+
+# Add to crontab (runs twice daily)
+echo "0 0,12 * * * root python -c 'import random; import time; time.sleep(random.random() * 3600)' && certbot renew -q" | sudo tee -a /etc/crontab > /dev/null
+```
+
+#### HTTPS Support
+
+To enable HTTPS, provide SSL certificate and private key files:
+
+```bash
+$ smartthings-metrics -client-id YOUR_CLIENT_ID -client-secret YOUR_CLIENT_SECRET \
+  -cert-file /path/to/cert.pem -key-file /path/to/key.pem
+$ curl -k https://localhost:9153/metrics
+```
+
+You can also set the certificate files using environment variables:
+```bash
+export SSL_CERT_FILE=/path/to/cert.pem
+export SSL_KEY_FILE=/path/to/key.pem
+```
 
 ### Run as a Docker container
 
@@ -31,8 +109,24 @@ $ curl localhost:9153/metrics
   * [Docker](https://docs.docker.com/get-docker/)
 
 ```bash
-$ docker run -d --rm -p 9153:9153 moikot/smartthings-metrics -token [Smarthings-API-token]
+$ docker run -d --rm -p 9153:9153 moikot/smartthings-metrics -client-id YOUR_CLIENT_ID -client-secret YOUR_CLIENT_SECRET
 $ curl localhost:9153/metrics
+```
+
+#### HTTPS Support
+
+To enable HTTPS in Docker, mount your SSL certificate files:
+
+```bash
+$ docker run -d --rm -p 9153:9153 \
+  -v /path/to/cert.pem:/etc/ssl/certs/cert.pem \
+  -v /path/to/key.pem:/etc/ssl/private/key.pem \
+  moikot/smartthings-metrics \
+  -client-id YOUR_CLIENT_ID \
+  -client-secret YOUR_CLIENT_SECRET \
+  -cert-file /etc/ssl/certs/cert.pem \
+  -key-file /etc/ssl/private/key.pem
+$ curl -k https://localhost:9153/metrics
 ```
 
 ### Deploy to a Kubernetes cluster
@@ -45,7 +139,28 @@ SmartThing metrics service is installed to Kubernetes via its [Helm chart](https
 
 ```
 $ helm repo add moikot https://moikot.github.io/helm-charts
-$ helm install smartthings-metrics moikot/smartthings-metrics --create-namespace --namespace smartthings --set token=[Smarthings-API-token]
+$ helm install smartthings-metrics moikot/smartthings-metrics --create-namespace --namespace smartthings \
+  --set clientId=YOUR_CLIENT_ID \
+  --set clientSecret=YOUR_CLIENT_SECRET
+```
+
+#### HTTPS Support
+
+To enable HTTPS in Kubernetes, create a secret with your SSL certificate and key:
+
+```bash
+$ kubectl create secret tls smartthings-metrics-tls \
+  --cert=/path/to/cert.pem \
+  --key=/path/to/key.pem \
+  -n smartthings
+
+$ helm install smartthings-metrics moikot/smartthings-metrics \
+  --create-namespace \
+  --namespace smartthings \
+  --set clientId=YOUR_CLIENT_ID \
+  --set clientSecret=YOUR_CLIENT_SECRET \
+  --set ssl.enabled=true \
+  --set ssl.certSecret=smartthings-metrics-tls
 ```
 
 ## How it works
@@ -68,57 +183,4 @@ Metric are exposed as Prometheus [gauges](https://prometheus.io/docs/concepts/me
 
 ### Values
 
-All the attributes of type `number` and `integer` are supported. Attributes of type `string` are supported only for enumerations. The service maps all of the enumeration identifiers to numbers and then uses them to translate a string value to a number. For example [switch](https://smartthings.developer.samsung.com/docs/api-ref/capabilities.html#Switch) capability defines two enumeration identifiers `on` and `off`. They will be mapped to `0.0` and `1.0`.
-
-**Note:** For `smartthings_health_state` gauge uses this static mapping:
-
-| Enumeration value | Numeric value |
-|-------------------|---------------|
-| OFFLINE |   0.0 |
-| UNHEALTHY | 1.0 |
-| ONLINE |    2.0 |
-
-### Labels
-
-Several labels are added for all measurements:
-
-| Label | Description |
-|-------|-------------|
-| `name` | The name of the device. |
-| `label` | The device name provided by a user (the device name by default). |
-| `device_id` | The unique identifier for the device instance. |
-| `location_id` | The identifier of the location the device is associated with. |
-| `device_manufacturer_code` | The device manufacturer code. |
-
-For the devices with a Device Type Handler (DTH), several additional labels are provided:
-
-| Label | Description |
-|-------|-------------|
-| `device_type_name` | The name for the device type. |
-| `device_type_id` | The identifier of the device type. |
-| `device_network_type` | The device network type. |
-
-### Units
-
-The units of measurement are mapped according to this table:
-
-| Symbol | Unit name |
-|-------|-------------|
-| % | percent |
-| lux | lux |
-| s | second |
-| W | watt |
-| C | degree_celsius |
-| K | degree_kelvin |
-| F | degree_fahrenheit |
-| V | volt |
-| kg | kilogram |
-| lbs | pound |
-| 斤 | catty |
-| CAQI | caqi |
-| dBm | decibel_milliwatt |
-| μg/m^3 | microgram_per_cubic_meter |
-| mg/m^3 | milligram_per_cubic_meter |
-| kg/m^2 | kilogram_per_square_meter |
-| kWh | kilowatt_hour |
-| ppm | parts_per_million |
+All the attributes of type `number` and `integer`

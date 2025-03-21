@@ -44,14 +44,17 @@ var (
 )
 
 func main() {
-	var token, intervalStr string
+	var clientID, clientSecret, intervalStr, certFile, keyFile string
 
-	flag.StringVar(&token, "token", os.Getenv("API_TOKEN"), "The API token.")
+	flag.StringVar(&clientID, "client-id", os.Getenv("CLIENT_ID"), "The OAuth client ID.")
+	flag.StringVar(&clientSecret, "client-secret", os.Getenv("CLIENT_SECRET"), "The OAuth client secret.")
 	flag.StringVar(&intervalStr, "interval", os.Getenv("REFRESH_INTERVAL"), "The status refresh interval in seconds.")
+	flag.StringVar(&certFile, "cert-file", os.Getenv("SSL_CERT_FILE"), "Path to SSL certificate file.")
+	flag.StringVar(&keyFile, "key-file", os.Getenv("SSL_KEY_FILE"), "Path to SSL private key file.")
 
 	flag.Parse()
 
-	exitFunc(Run(token, intervalStr))
+	exitFunc(Run(clientID, clientSecret, intervalStr, certFile, keyFile))
 }
 
 func ParseInterval(intervalStr string) (int, error) {
@@ -68,9 +71,8 @@ func ParseInterval(intervalStr string) (int, error) {
 	return 60, nil // Default interval is 60 seconds
 }
 
-func Run(token, intervalStr string) int {
-
-	if token == "" {
+func Run(clientID, clientSecret, intervalStr, certFile, keyFile string) int {
+	if clientID == "" || clientSecret == "" {
 		flag.PrintDefaults()
 		return 1
 	}
@@ -81,9 +83,9 @@ func Run(token, intervalStr string) int {
 		return 1
 	}
 
-	go servePrometheus(defaultPromAddr)
+	go servePrometheus(defaultPromAddr, certFile, keyFile)
 
-	loop := recording.NewLoop(token, interval)
+	loop := recording.NewLoop(clientID, clientSecret, interval)
 	loop.Start()
 
 	signal.Notify(stopChan, os.Interrupt, os.Kill)
@@ -92,9 +94,16 @@ func Run(token, intervalStr string) int {
 	return 0
 }
 
-func servePrometheus(addr string) {
+func servePrometheus(addr, certFile, keyFile string) {
 	http.Handle("/metrics", promhttp.Handler())
-	err := http.ListenAndServe(addr, nil)
+	
+	var err error
+	if certFile != "" && keyFile != "" {
+		err = http.ListenAndServeTLS(addr, certFile, keyFile, nil)
+	} else {
+		err = http.ListenAndServe(addr, nil)
+	}
+	
 	if err != nil {
 		panic("unable to create HTTP server, error: " + err.Error())
 	}

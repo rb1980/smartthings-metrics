@@ -23,20 +23,25 @@ SOFTWARE.
 package readers
 
 import (
+	"fmt"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 )
 
-func NewAuthInfoWriter(token string) runtime.ClientAuthInfoWriter {
+func NewAuthInfoWriter(clientID, clientSecret string) runtime.ClientAuthInfoWriter {
 	return &AuthInfoWriter{
-		token: token,
+		oauthClient: NewOAuthClient(clientID, clientSecret),
 	}
 }
 
 type AuthInfoWriter struct {
-	token string
+	oauthClient *OAuthClient
 }
 
 func (a *AuthInfoWriter) AuthenticateRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
-	return r.SetHeaderParam("Authorization", "Bearer "+a.token)
+	token, err := a.oauthClient.GetToken()
+	if err != nil {
+		return fmt.Errorf("failed to get OAuth token: %v", err)
+	}
+	return r.SetHeaderParam("Authorization", "Bearer "+token)
 }

@@ -30,12 +30,12 @@ import (
 	"time"
 )
 
-func NewLoop(token string, interval int) *Loop {
+func NewLoop(clientID, clientSecret string, interval int) *Loop {
 	l := logrus.New()
 	l.SetFormatter(&logrus.JSONFormatter{})
 
 	return &Loop{
-		DeviceReader:    readers.NewDeviceReader(token, l),
+		DeviceReader:    readers.NewDeviceReader(clientID, clientSecret, l),
 		StatusProcessor: extracting.NewStatusProcessor(l),
 		MetricRecorder:  NewMetricRecorder(l),
 		log:             l,

@@ -52,8 +52,8 @@ type DeviceReader interface {
 	ReadStatuses() ([]*DeviceStatus, error)
 }
 
-func NewDeviceReader(token string, log logrus.FieldLogger) DeviceReader {
-	auth := NewAuthInfoWriter(token)
+func NewDeviceReader(clientID, clientSecret string, log logrus.FieldLogger) DeviceReader {
+	auth := NewAuthInfoWriter(clientID, clientSecret)
 
 	httpClient := &http.Client{
 		Timeout: 10 * time.Second,
