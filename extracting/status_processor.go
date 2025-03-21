@@ -26,7 +26,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/moikot/smartthings-go/models"
-	"github.com/moikot/smartthings-metrics/readers"
+	"github.com/rb1980/smartthings-metrics/readers"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"

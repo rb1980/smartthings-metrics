@@ -24,7 +24,7 @@ package extracting
 
 import (
 	"github.com/moikot/smartthings-go/models"
-	"github.com/moikot/smartthings-metrics/caching"
+	"github.com/rb1980/smartthings-metrics/caching"
 	"github.com/patrickmn/go-cache"
 
 	"time"
