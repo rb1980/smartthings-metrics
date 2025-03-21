@@ -38,7 +38,6 @@ func NewLoop(clientID, clientSecret string, interval int) *Loop {
 		DeviceReader:    readers.NewDeviceReader(clientID, clientSecret, l),
 		StatusProcessor: extracting.NewStatusProcessor(l),
 		MetricRecorder:  NewMetricRecorder(l),
-		log:             l,
 		interval:        interval,
 	}
 }
@@ -47,7 +46,6 @@ type Loop struct {
 	readers.DeviceReader
 	extracting.StatusProcessor
 	MetricRecorder
-	log      logrus.FieldLogger
 	interval int
 }
 
@@ -56,7 +54,6 @@ func (l *Loop) Start() {
 		for {
 			err := l.record()
 			if err != nil {
-				log.Error(err)
 			}
 			time.Sleep(time.Duration(l.interval) * time.Second)
 		}
